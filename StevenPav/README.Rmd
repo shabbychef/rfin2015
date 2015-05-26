@@ -1,0 +1,54 @@
+```{r setup,include=FALSE}
+# set the knitr options ... for everyone!
+opts_knit$set(progress=TRUE)
+opts_knit$set(eval.after='fig.cap')
+opts_chunk$set(echo=TRUE,warning=FALSE,message=FALSE,eval=TRUE)
+opts_chunk$set(cache=TRUE,cache.path=".cache/readme_")
+
+# other options are "pdf","cairo_ps","png"
+opts_chunk$set(fig.path="github_extra/figure/",dev=c("png"))
+opts_chunk$set(fig.width=7,fig.height=6,dpi=100,out.width='700px',out.height='600px')
+
+# for text wrapping:
+options(width=72,digits=2)
+opts_chunk$set(size="small")
+opts_chunk$set(tidy=TRUE,tidy.opts=list(width.cutoff=50,keep.blank.line=TRUE))
+
+# build via
+# r -l knitr -e 'knitr::knit(basename("README.Rmd"))'
+```
+
+# Portfolio Cramer Rao bounds
+
+## Why does this happen?
+
+![this](http://www.imgur.com/5oOkkSR.jpg)
+
+There are numerous oft-lamented reasons for this kind of 'out-of-sample
+experience', _viz._
+
+* Plain old overfit ('p-value hacking').
+* Broken backtests: lookahead bias, survivorship bias, _etc._
+* Bad understanding of trade costs. 
+* Bad execution.
+
+However, these are largely preventable errors committed only by 'bad' quants.
+Broken backtest code, for example, should be fixed to remove 'time traveling'.
+Quants should not overfit or debias their estimates of Sharpe to control for
+data mining bias, _etc._ Assuming these errors have been corrected, is there
+some kind of fundamental headwind that all quants, even the 'good' ones, face?
+
+
+```{r install,eval=FALSE,echo=TRUE}
+if (require(devtools)) {
+	# latest greatest
+	install_github('shabbychef/sadists')
+}
+# via drat:
+if (require(drat)) {
+	drat:::add('shabbychef')
+	install.packages('sadists')
+}
+```
+
+

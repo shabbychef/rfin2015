@@ -1,0 +1,4 @@
+# dev stuff
+.*.swp
+.*.swo
+.cache/
