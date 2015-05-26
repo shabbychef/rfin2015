@@ -6,11 +6,14 @@ framework: revealjs
 widgets: [mathjax]
 ---
 
-## Testing. testing.
+# Portfolio Cramer Rao Bounds
 
 $$latex
 \mu / \sigma
 $$
+
+
+## Learn More
 
 ```{r demo,eval=FALSE}
 library(shiny)

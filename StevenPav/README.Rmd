@@ -43,7 +43,11 @@ some kind of fundamental headwind that all quants, even the 'good' ones, face?
 It happens to be the case that there is some fundamental bound. To talk about
 it, consider a portfolio construction method (an 'estimator') as a function
 which takes historical data, say the T x p matrix, X, and 
-produces a p vector of the portfolio weights.
+produces a p vector of the portfolio weights. To control for bad luck in the
+out-of-sample period, I consider the (population) Sharpe ratio of this
+portfolio. That is, the expected return of this portfolio divided by its
+volatility. In theory this will be 'stochastically monotonic' with the achieved
+Sharpe in the out-of-sample period. We can view this
 
 ```{r load_sp100,eval=TRUE,echo=FALSE,results='hide'}
 
