@@ -13,7 +13,7 @@ Supporting material for authors at R in Finance 2015 can be found here.
 Content here is volunteered by the authors, but this repo is not endorsed
 by the conference organizers.
 
-```{r dir_listing, echo=FALSE}
+```{r dir_listing, echo=FALSE, results='asis'}
 # I am surprised there is not already a 
 # directory -> Markdown link listing function
 # (maybe there is ;)
@@ -22,7 +22,7 @@ finfo <- file.info(dlist)
 isd <- finfo$isdir
 dinfo <- finfo[isd,]
 links <- sapply(rownames(dinfo),function(d) {
-	sprintf('[%s](%s)',d,d) })
+	sprintf('  * [%s](%s)',d,d) })
 cat(paste0(links,collapse='\n'))
 ```
 
