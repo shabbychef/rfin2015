@@ -1,0 +1,19 @@
+---
+title: Portfolio Cramer Rao bounds
+subtitle: sub t
+author: Steven E. Pav
+framework: revealjs
+widgets: [mathjax]
+---
+
+## Testing. testing.
+
+$$latex
+\mu / \sigma
+$$
+
+```{r demo,eval=FALSE}
+library(shiny)
+runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
+```
+
