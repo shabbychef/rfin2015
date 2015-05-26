@@ -24,8 +24,8 @@ some kind of fundamental headwind that all quants, even the 'good' ones, face?
 
 It happens to be the case that there is some fundamental bound. To talk about
 it, consider a portfolio construction method (an 'estimator') as a function
-which takes historical data, say the $latex T \times p$ matrix, $latex X$, and 
-produces a $latex p$ vector of the portfolio weights.
+which takes historical data, say the T x p matrix, X, and 
+produces a p vector of the portfolio weights.
 
 
 
