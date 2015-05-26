@@ -22,16 +22,40 @@ some kind of fundamental headwind that all quants, even the 'good' ones, face?
 
 
 
+
+
 ```r
-if (require(devtools)) {
-    # latest greatest
-    install_github("shabbychef/sadists")
-}
-# via drat:
-if (require(drat)) {
-    drat:::add("shabbychef")
-    install.packages("sadists")
-}
+require(SharpeR)
+# compute MLE and KRS estimators on maximal SR in
+# alphabetical order
+MLEs <- unlist(lapply(1:dim(sub.lr)[2], function(n) {
+    inference(as.sropt(sub.lr[, 1:n]), "MLE")
+}))
+KRSs <- unlist(lapply(1:dim(sub.lr)[2], function(n) {
+    inference(as.sropt(sub.lr[, 1:n]), "KRS")
+}))
+
+# try for random reorderings:
+set.seed(12312L)
+buncho.KRSs <- replicate(1000, unlist(lapply(sample.int(dim(sub.lr)[2]), 
+    function(n) {
+        inference(as.sropt(sub.lr[, 1:n]), "KRS")
+    })))
 ```
+
+
+```r
+foo.df <- data.frame(df = rep(1:(dim(buncho.KRSs)[1]), 
+    dim(buncho.KRSs)[2]), KRS = as.vector(t(buncho.KRSs)))
+foo.df <- foo.df[foo.df$df < 11, ]
+
+require(ggplot2)
+ph <- ggplot(data = foo.df, aes(x = factor(df), y = KRS))
+ph <- ph + geom_boxplot()
+ph <- ph + labs(x = "# assets", y = expression(zeta["*"]))
+print(ph)
+```
+
+<img src="figure/readme_plot_KRS_sp100-1.png" title="plot of chunk plot_KRS_sp100" alt="plot of chunk plot_KRS_sp100" width="700px" height="600px" />
 
 

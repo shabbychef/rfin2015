@@ -6,7 +6,7 @@ opts_chunk$set(echo=TRUE,warning=FALSE,message=FALSE,eval=TRUE)
 opts_chunk$set(cache=TRUE,cache.path=".cache/readme_")
 
 # other options are "pdf","cairo_ps","png"
-opts_chunk$set(fig.path="github_extra/figure/",dev=c("png"))
+opts_chunk$set(fig.path="figure/readme_",dev=c("png"))
 opts_chunk$set(fig.width=7,fig.height=6,dpi=100,out.width='700px',out.height='600px')
 
 # for text wrapping:
@@ -39,16 +39,91 @@ data mining bias, _etc._ Assuming these errors have been corrected, is there
 some kind of fundamental headwind that all quants, even the 'good' ones, face?
 
 
-```{r install,eval=FALSE,echo=TRUE}
-if (require(devtools)) {
-	# latest greatest
-	install_github('shabbychef/sadists')
+```{r load_sp100,eval=TRUE,echo=FALSE,results='hide'}
+
+require(Quandl)
+# sooper secret key
+Quandl.auth(Sys.getenv('R_QUANDL_AUTH',unset="GETYOUROWNKEYAND_PUT"))
+require(xts)
+
+# this list is aso of 2014-03-21
+asof <- 'March 21, 2014'
+splist <- c("AAPL", "ABBV", "ABT", "ACN", "AIG", "ALL", "AMGN", "AMZN", "APA", 
+						"APC", "AXP", "BA", "BAC", "BAX", "BIIB", "BK", "BMY", "BRK_B",
+						"C", "CAT", "CL", "CMCSA", "COF", "COP", "COST", "CSCO", "CVS",
+						"CVX", "DD", "DIS", "DOW", "DVN", "EBAY", "EMC", "EMR", "EXC", "F",
+						"FB", "FCX", "FDX", "FOXA", "GD", "GE", "GILD", "GM", "GOOG", "GS",
+						"HAL", "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO",
+						"LLY", "LMT", "LOW", "MA", "MCD", "MDLZ", "MDT", "MET", "MMM",
+						"MO", "MON", "MRK", "MS", "MSFT", "NKE", "NOV", "NSC", "ORCL",
+						"OXY", "PEP", "PFE", "PG", "PM", "QCOM", "RTN", "SBUX", "SLB",
+						"SO", "SPG", "T", "TGT", "TWX", "TXN", "UNH", "UNP", "UPS", "USB",
+						"UTX", "V", "VZ", "WAG", "WFC", "WMT", "XOM")
+
+get.ret <- function(tickr,ntries=5) {
+	the.pry <- NULL
+	attempt <- 1L
+	while (is.null(the.pry) && attempt <= ntries) {
+		attempt <- attempt + 1
+		try(
+			the.pry <- Quandl(paste0('YAHOO/',tickr),
+												collapste="weekly",type="xts",
+												start_date="2009-03-15",end_date="2014-03-31")
+		)
+	}
+
+	if (is.null(the.pry)) {
+		warning(paste0(tickr,' failed to load?'))
+	}
+	tryCatch({
+		the.ac <- to.weekly(the.pry[,"Adjusted Close",drop=FALSE],indexAt='endof')
+		the.ac <- the.ac[,dim(the.ac)[2]]
+		# move to sundays?
+		index(the.ac) <- time(the.ac) + (4 - .indexwday(the.ac))
+		log.ret <- diff(log(the.ac),k=1)
+		colnames(log.ret) <- c(tickr)
+	}, error= function(e) e,
+	finally = print(paste0('done with ',tickr)))
+	return(log.ret)
 }
-# via drat:
-if (require(drat)) {
-	drat:::add('shabbychef')
-	install.packages('sadists')
-}
+
+allrets <- lapply(splist,get.ret)
+all.lr <- do.call(cbind,allrets)
+OEX.lr <- get.ret('INDEX_OEX')
+
+# trim first row
+sub.lr <- all.lr[2:dim(all.lr)[1],]
+ok.col <- colSums(is.na(sub.lr)) == 0
+sub.lr <- sub.lr[,ok.col]
+```
+
+```{r inference_sp100,eval=TRUE,echo=TRUE}
+require(SharpeR)
+# compute MLE and KRS estimators on maximal SR
+# in alphabetical order
+MLEs <- unlist(lapply(1:dim(sub.lr)[2],function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"MLE") }))
+KRSs <- unlist(lapply(1:dim(sub.lr)[2],function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"KRS") }))
+
+# try for random reorderings:
+set.seed(12312L)
+buncho.KRSs <- replicate(1000,unlist(lapply(sample.int(dim(sub.lr)[2]),function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"KRS") })))
+
+```
+
+```{r plot_KRS_sp100,eval=TRUE,echo=TRUE,results='asis'}
+foo.df <- data.frame(df=rep(1:(dim(buncho.KRSs)[1]),dim(buncho.KRSs)[2]),
+	KRS=as.vector(t(buncho.KRSs)))
+foo.df <- foo.df[foo.df$df < 11,]
+
+require(ggplot2)
+ph <- ggplot(data=foo.df,aes(x=factor(df),y=KRS))
+ph <- ph + geom_boxplot()
+ph <- ph + labs(x="# assets",
+								y=expression(zeta["*"]))
+print(ph)
 ```
 
 
