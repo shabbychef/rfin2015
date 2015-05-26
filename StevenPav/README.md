@@ -64,4 +64,15 @@ print(ph)
 
 <img src="figure/readme_plot_KRS_sp100-1.png" title="plot of chunk plot_KRS_sp100" alt="plot of chunk plot_KRS_sp100" width="700px" height="600px" />
 
+## Learn more
+
+
+
+```r
+library(shiny)
+runGitHub("rfin2015", "shabbychef", subdir = "StevenPav/app")
+# there is also a gist:
+# runGist('75e1066b3db6b0f9e981')
+```
+
 

@@ -132,4 +132,14 @@ ph <- ph + labs(x="# assets",
 print(ph)
 ```
 
+## Learn more
+
+
+```{r run_shiny,eval=FALSE,echo=TRUE}
+library(shiny)
+runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
+# there is also a gist:
+# runGist("75e1066b3db6b0f9e981")
+```
+
 
