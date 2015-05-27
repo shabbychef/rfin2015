@@ -4,7 +4,7 @@ subtitle: sub t
 author: Steven E. Pav
 framework: revealjs
 widgets: [mathjax]
----
+--- layout: slide
 
 ### Portfolio Cramer Rao Bounds
 #### (why bad things happen to good quants)
@@ -17,25 +17,172 @@ widgets: [mathjax]
 
 <img src="http://www.imgur.com/5oOkkSR.jpg" width="600">
 
+--- 
+layout: slide
 ---
 
 ### Why overfit happens
 
-For 'bad' quants:
-- Plain old overfit ('p-value hacking').
-- Broken backtests: lookahead bias, survivorship bias, _etc._
-- Bad understanding of trade costs. 
-- Bad execution.
+##### For bad quants:
+<ul>
+<li>Plain old overfit ('p-value hacking').
+<li>Broken backtests: lookahead bias, survivorship bias, _etc._
+<li>Bad understanding of trade costs. 
+<li>Bad execution.
+</ul>
 
-For 'good' quants:
-- Bad luck.
-- A fundamental bound.
+##### For good quants:
+<ul>
+<li>Bad luck.
+<li>A fundamental bound.
+</ul>
 
 ---
 
 ### A fundamental bound?
 
+Consider portfolio estimator as function:
+The input is historical data, the $T\times p$ matrix $X$, say.
+The output is the portfolio, a $p$ vector.
 
+Consider the (population) Sharpe ratio of this portfolio,
+its expected value divided by its volatility. 
+
+We will bound the expected Sharpe, with expectation over draws
+of $X$.
+
+---
+
+### The bound
+
+$$
+\mbox{Cramer Rao} + \mbox{geometry} + \mbox{math} => \mbox{bound on expected Sharpe}.
+$$
+
+Under a wide range of conditions the bound is:
+$$
+E_X\left[Sharpe\right] \le \sqrt{\frac{\mbox{effect size}}{\mbox{\# knobs} + \mbox{effect size}}} \mbox{maximal Sharpe},
+$$
+with $\mbox{effect size} = \mbox{\# years}\, (\mbox{maximal Sharpe})^2.$
+
+---
+
+### Control your free variables
+
+```{r control, include=FALSE}
+nyr <- 5
+zeta <- 1.1
+qbound <- function(df,n,zeta) {
+	effst <- n * zeta^2
+	ebnd <- sqrt(effst / (df + effst)) * zeta
+}
+nstok1 <- 10
+myq1 <- qbound(nstok1 -1,nyr,zeta)
+nstok2 <- 40
+myq2 <- qbound(nstok2 -1,nyr,zeta)
+nstok3 <- 160
+myq3 <- qbound(nstok3 -1,nyr,zeta)
+```
+This is why portfolio optimization is not performed on 100's of unknowns:
+
+If maximal Sharpe is $`r zeta`$, observing $`r nyr` \mbox{yr}$ of data:
+- for $`r nstok1`$ stocks, the bound is $`r myq1`$.
+- for $`r nstok2`$ stocks, the bound is $`r myq2`$.
+- for $`r nstok3`$ stocks, the bound is $`r myq3`$.
+
+However, maximal Sharpe should grow with universe size.
+Can it grow fast enough?
+
+--- 
+
+### Diversification and universe size
+
+```{r show_grow_bound,echo=FALSE,cache=TRUE}
+
+ope <- 253
+n.stok <- 6
+n.yr <- 4
+n.obs <- ceiling(ope * n.yr)
+zeta.s <- 1.25 / sqrt(ope)   # optimal SNR, in daily units
+
+bound.experiment <- function(pow,n.obs,zeta.s,
+		n.stok=n.stok,ope=ope,plims=c(2,250)) {
+	require(reshape2)
+	all.ps <- unique(round(exp(seq(log(min(plims)),
+																	log(max(plims)),
+																	length.out=140))))
+	zeta.0 <- zeta.s / (n.stok ^ pow)
+	all.zeta <- zeta.0 * (all.ps ^ pow)
+	all.bnd <- sqrt(ope * n.obs) * all.zeta^2 / sqrt(all.ps - 1 + n.obs * all.zeta^2)
+
+	#population.max=sqrt(ope) * all.zeta,
+	foo.df <- data.frame(p=all.ps,
+		pow=rep(pow,length(all.bnd)),
+		bound=all.bnd)
+	measure.vars <- colnames(foo.df)
+	id.vars <- c("p","pow")
+	measure.vars <- measure.vars[! measure.vars %in% id.vars]
+	require(reshape2)
+	melt.df <- melt(foo.df,id.vars=id.vars,variable.name="Sharpe",
+		measure.vars=measure.vars)
+	return(melt.df)
+}
+
+#	plims = c(2,250)
+#	melt.df <- NULL
+#	for (ppp in pow) {
+#		addon.df <- bound.experiment(ppp,n.obs,zeta.s,n.stok=n.stok,ope=ope,plims=plims)
+#		if (is.null(melt.df))
+#			melt.df <- addon.df
+#		else
+#			melt.df <- rbind(melt.df,addon.df)
+#	}
+#	#as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
+#	melt.df$pow <- as.numeric(melt.df$pow)
+#
+#	require(ggplot2)
+#	ph <- ggplot(data=melt.df,aes(x=p,y=value,group=pow,colour=pow))
+#	ph <- ph + geom_line()
+#	ph <- ph + labs(x="# assets",
+#									y="Signal-Noise ratio (annualized)")
+#	ph <- ph + scale_x_log10(limits = c(1,max(plims)))
+#	ph <- ph + scale_y_log10(limits = c(0.5,4),
+#		breaks=2^seq(from=-1,to=2,by=0.5))
+#	print(ph)
+
+bound.plot <- function(pow,n.obs,zeta.s,plims=c(2,250),...) {
+	melt.df <- NULL
+	for (ppp in pow) {
+		addon.df <- bound.experiment(ppp,n.obs,zeta.s,plims=plims,...)
+		if (is.null(melt.df))
+			melt.df <- addon.df
+		else
+			melt.df <- rbind(melt.df,addon.df)
+	}
+	melt.df$gamma <- factor(melt.df$pow)
+
+	require(ggplot2)
+	ph <- ggplot(data=melt.df,aes(x=p,y=value,group=gamma,colour=gamma))
+	ph <- ph + geom_line()
+	ph <- ph + labs(x="# assets",
+									y="Signal-Noise ratio (annualized)")
+	ph <- ph + guides(colour=guide_legend(title=expression(gamma)))
+	ph <- ph + scale_x_log10(limits = c(1,max(plims)))
+	ph <- ph + scale_y_log10(limits = c(0.5,4),
+		breaks=2^seq(from=-1,to=2,by=0.5))
+	return(ph)
+}
+
+pgammas <- seq(from=0.15,to=0.35,by=0.05)
+
+sgammas <- sort(pgammas)
+sgammas.txt <- paste0(paste0(sgammas[1:(length(sgammas)-1)],collapse=', '),", and ",sgammas[length(sgammas)],sep='')
+sgammas.summary <- paste0("between ",sgammas[1]," and ",sgammas[length(sgammas)])
+
+print(bound.plot(pgammas,n.obs=n.obs,zeta.s=zeta.s,
+	n.stok=n.stok,ope=ope))
+
+```
 ---
 ### Learn More
 
