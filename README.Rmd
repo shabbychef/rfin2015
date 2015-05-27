@@ -97,8 +97,7 @@ Supposing that maximal Sharpe might follow a power law with respect to universe 
 _log(Sharpe) = gamma log(p) + c_ (GFM does not support proper math equations), here I plot the
 bound on expected Sharpe versus _p_ for different values of _gamma_:
 
-```{r show_grow_bound,echo=FALSE,cache=TRUE}
-
+```{r show_grow_bound,echo=TRUE,cache=TRUE}
 ope <- 253
 n.stok <- 6
 n.yr <- 4
@@ -128,28 +127,6 @@ bound.experiment <- function(pow,n.obs,zeta.s,
 	return(melt.df)
 }
 
-#	plims = c(2,250)
-#	melt.df <- NULL
-#	for (ppp in pow) {
-#		addon.df <- bound.experiment(ppp,n.obs,zeta.s,n.stok=n.stok,ope=ope,plims=plims)
-#		if (is.null(melt.df))
-#			melt.df <- addon.df
-#		else
-#			melt.df <- rbind(melt.df,addon.df)
-#	}
-#	#as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
-#	melt.df$pow <- as.numeric(melt.df$pow)
-#
-#	require(ggplot2)
-#	ph <- ggplot(data=melt.df,aes(x=p,y=value,group=pow,colour=pow))
-#	ph <- ph + geom_line()
-#	ph <- ph + labs(x="# assets",
-#									y="Signal-Noise ratio (annualized)")
-#	ph <- ph + scale_x_log10(limits = c(1,max(plims)))
-#	ph <- ph + scale_y_log10(limits = c(0.5,4),
-#		breaks=2^seq(from=-1,to=2,by=0.5))
-#	print(ph)
-
 bound.plot <- function(pow,n.obs,zeta.s,plims=c(2,250),...) {
 	melt.df <- NULL
 	for (ppp in pow) {
@@ -174,10 +151,6 @@ bound.plot <- function(pow,n.obs,zeta.s,plims=c(2,250),...) {
 }
 
 pgammas <- seq(from=0.15,to=0.35,by=0.05)
-
-sgammas <- sort(pgammas)
-sgammas.txt <- paste0(paste0(sgammas[1:(length(sgammas)-1)],collapse=', '),", and ",sgammas[length(sgammas)],sep='')
-sgammas.summary <- paste0("between ",sgammas[1]," and ",sgammas[length(sgammas)])
 
 print(bound.plot(pgammas,n.obs=n.obs,zeta.s=zeta.s,
 	n.stok=n.stok,ope=ope))
@@ -276,12 +249,13 @@ print(ph)
 
 ## Learn more
 
-
-```{r run_shiny,eval=FALSE,echo=TRUE}
+- Read the [paper](http://arxiv.org/abs/1409.5936)
+- Try the shiny app:
+```{r demo,eval=FALSE}
 library(shiny)
-runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
-# there is also a gist:
-# runGist("75e1066b3db6b0f9e981")
+shiny::runGitHub('rfin2015','shabbychef',subdir='app')
 ```
+- Ask me questions.
+- Thank you.
 
 
