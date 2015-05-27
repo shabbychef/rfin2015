@@ -184,7 +184,8 @@ print(ph)
 ## Learn more
 
 - Read the [paper](http://arxiv.org/abs/1409.5936)
-- Try the shiny app:
+- Try the Monte Carlo experiment shiny app. Via
+[shinyapps.io](https://shabbychef.shinyapps.io/shiny), or run it locally via:
 
 ```r
 library(shiny)
