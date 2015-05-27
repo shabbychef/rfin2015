@@ -6,17 +6,47 @@ framework: revealjs
 widgets: [mathjax]
 ---
 
-# Portfolio Cramer Rao Bounds
+### Portfolio Cramer Rao Bounds
+#### (why bad things happen to good quants)
 
-$$latex
-\mu / \sigma
-$$
+#### Steven E. Pav
+
+---
+
+### Why does this happen? 
+
+<img src="http://www.imgur.com/5oOkkSR.jpg" width="600">
+
+---
+
+### Why overfit happens
+
+For 'bad' quants:
+- Plain old overfit ('p-value hacking').
+- Broken backtests: lookahead bias, survivorship bias, _etc._
+- Bad understanding of trade costs. 
+- Bad execution.
+
+For 'good' quants:
+- Bad luck.
+- A fundamental bound.
+
+---
+
+### A fundamental bound?
 
 
-## Learn More
+---
+### Learn More
 
 ```{r demo,eval=FALSE}
 library(shiny)
 runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
 ```
+
+--- 
+# testing slides
+$$latex
+\mu / \sigma
+$$
 
