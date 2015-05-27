@@ -95,7 +95,9 @@ maximal Sharpe would be identically zero.
 
 Supposing that maximal Sharpe might follow a power law with respect to universe size, _i.e._
 _log(Sharpe) = gamma log(p) + c_ (GFM does not support proper math equations), here I plot the
-bound on expected Sharpe versus _p_ for different values of _gamma_:
+bound on expected Sharpe versus _p_ for different values of _gamma_. One can prove that there
+is a change in behavior at _gamma = 1/4_. For smaller values, the upper bound eventually
+_decreases_ with increasing universe size.
 
 ```{r show_grow_bound,echo=TRUE,cache=TRUE}
 ope <- 253
@@ -159,6 +161,17 @@ print(bound.plot(pgammas,n.obs=n.obs,zeta.s=zeta.s,
 
 
 ## Empirical diversification in the S&P 100 universe
+
+To get some empirical estimate of the value of _gamma_, I downloaded
+the returns of stocks which were in the S&P 100 as of March 21, 2014.
+I then use the 'KRS' estimator from the 
+[SharpeR](http://github.com/shabbychef/SharpeR) package to estimate
+the population maximal Sharpe as a function of universe size. If you
+do this for stocks in alphabetical order, there is an 'AAPL effect'. 
+I randomly reorder the stocks and compute the KRS statistic as a function
+of universe size, repeating 1000 times. Here is a boxplot, over Monte Carlo
+replications, of the maximal Sharpe as function of universe size. There is
+effectively _no_ diversification. That is, it appears that _gamma = 0_.
 
 ```{r load_sp100,eval=TRUE,echo=FALSE,results='hide'}
 
