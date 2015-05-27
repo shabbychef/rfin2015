@@ -282,7 +282,7 @@ print(ph)
 - Try the shiny app:
 ```{r demo,eval=FALSE}
 library(shiny)
-shiny::runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
+shiny::runGitHub('rfin2015','shabbychef',subdir='app')
 ```
 - Ask me questions.
 - Thank you.

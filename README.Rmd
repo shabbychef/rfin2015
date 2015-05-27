@@ -1,35 +1,287 @@
----
-title: RFin2015 README
-author: Steven E. Pav 
-output: 
-  md_document:
-    toc: false
-    variant: markdown_github
----
+```{r setup,include=FALSE}
+# set the knitr options ... for everyone!
+opts_knit$set(progress=TRUE)
+opts_knit$set(eval.after='fig.cap')
+opts_chunk$set(echo=TRUE,warning=FALSE,message=FALSE,eval=TRUE)
+opts_chunk$set(cache=TRUE,cache.path=".cache/readme_")
 
-```{r setup, echo=FALSE}
-# btw you can build the README.md from this document via
-# r -l rmarkdown -e 'render("README.Rmd")'
-library(knitr)
-opts_knit$set(cache=FALSE)
+# other options are "pdf","cairo_ps","png"
+opts_chunk$set(fig.path="figure/readme_",dev=c("png"))
+opts_chunk$set(fig.width=7,fig.height=6,dpi=100,out.width='700px',out.height='600px')
+
+# for text wrapping:
+options(width=72,digits=2)
+opts_chunk$set(size="small")
+opts_chunk$set(tidy=TRUE,tidy.opts=list(width.cutoff=50,keep.blank.line=TRUE))
+
+# build via
+# r -l knitr -e 'knitr::knit(basename("README.Rmd"))'
 ```
 
-# R in Finance 2015 #
+# Portfolio Cramér Rao bounds
 
-Supporting material for authors at R in Finance 2015 can be found here. 
-Content here is volunteered by the authors, who may submit via pull request. 
-This repo is not maintained or endorsed by the conference or its organizers.
+## Why does this happen?
 
-```{r dir_listing, echo=FALSE, results='asis'}
-# I am surprised there is not already a 
-# directory -> Markdown link listing function
-# (maybe there is ;)
-dlist <- dir()
-finfo <- file.info(dlist)
-isd <- finfo$isdir
-dinfo <- finfo[isd,]
-links <- sapply(rownames(dinfo),function(d) {
-	sprintf('  * [%s](%s)',d,d) })
-cat(paste0(links,collapse='\n'))
+![this](http://www.imgur.com/5oOkkSR.jpg)
+
+There are numerous oft-lamented reasons for this kind of 'out-of-sample
+experience', _viz._
+
+* Plain old overfit ('p-value hacking').
+* Broken backtests: lookahead bias, survivorship bias, _etc._
+* Bad understanding of trade costs. 
+* Bad execution.
+
+However, these are largely preventable errors committed only by 'bad' quants.
+Broken backtest code, for example, should be fixed to remove 'time traveling'.
+Quants should not overfit or debias their estimates of Sharpe to control for
+data mining bias, _etc._ Assuming these errors have been corrected, is there
+some kind of fundamental headwind that all quants, even the 'good' ones, face?
+
+## Cramér Rao
+
+It happens to be the case that there is some fundamental bound. To talk about
+it, consider a portfolio construction method (an 'estimator') as a function
+which takes historical data, say the _T x p_ matrix, _X_, and 
+produces a _p_ vector of the portfolio weights. To control for bad luck in the
+out-of-sample period, I consider the (population) Sharpe ratio of this
+portfolio. That is, the expected return of this portfolio divided by its
+volatility. In theory this will be 'stochastically monotonic' with the achieved
+Sharpe in the out-of-sample period. We will bound the expected value of this
+Sharpe, where expectation is over draws of the historical data _X_.
+
+## The bound
+
+Using the (multivariate) Cramér Rao theorem, some geometry and linear algebra, we
+arrive at a bound on the expected Sharpe. It looks something like:
+
+  Expected Sharpe &le; sqrt(effect size / (effect size + # knobs)) * maximal Sharpe
+
+where Expectation is over draws of the historical data, effect size is number of years
+times squared maximal Sharpe, and the # of knobs is _p - 1_. (Only direction matters,
+so we get one degree of freedom for free.)  This inequality holds under a wide
+range of conditions.
+
+## Control your free variables
+
+```{r control, include=FALSE}
+nyr <- 5
+zeta <- 1.1
+qbound <- function(df,n,zeta) {
+	effst <- n * zeta^2
+	ebnd <- sqrt(effst / (df + effst)) * zeta
+}
+nstok1 <- 10
+myq1 <- qbound(nstok1 -1,nyr,zeta)
+nstok2 <- 40
+myq2 <- qbound(nstok2 -1,nyr,zeta)
+nstok3 <- 160
+myq3 <- qbound(nstok3 -1,nyr,zeta)
 ```
+This is why portfolio optimization is not performed on 100's of unknowns:
+If maximal Sharpe is `r zeta`, observing `r nyr` yr of data:
+- for `r nstok1` stocks, the bound is `r myq1`.
+- for `r nstok2` stocks, the bound is `r myq2`.
+- for `r nstok3` stocks, the bound is `r myq3`.
+
+However, maximal Sharpe should grow with universe size.
+Can it grow fast enough?
+
+## Diversification and universe size
+
+The 'Fundamental law' suggests that maximal Sharpe should grow as the square root of the
+number of assets. This is fairly optimistic, however: if all the assets were zero mean, the
+maximal Sharpe would be identically zero. 
+
+Supposing that maximal Sharpe might follow a power law with respect to universe size, _i.e._
+_log(Sharpe) = gamma log(p) + c_ (GFM does not support proper math equations), here I plot the
+bound on expected Sharpe versus _p_ for different values of _gamma_:
+
+```{r show_grow_bound,echo=FALSE,cache=TRUE}
+
+ope <- 253
+n.stok <- 6
+n.yr <- 4
+n.obs <- ceiling(ope * n.yr)
+zeta.s <- 1.25 / sqrt(ope)   # optimal SNR, in daily units
+
+bound.experiment <- function(pow,n.obs,zeta.s,
+		n.stok=n.stok,ope=ope,plims=c(2,250)) {
+	require(reshape2)
+	all.ps <- unique(round(exp(seq(log(min(plims)),
+																	log(max(plims)),
+																	length.out=140))))
+	zeta.0 <- zeta.s / (n.stok ^ pow)
+	all.zeta <- zeta.0 * (all.ps ^ pow)
+	all.bnd <- sqrt(ope * n.obs) * all.zeta^2 / sqrt(all.ps - 1 + n.obs * all.zeta^2)
+
+	#population.max=sqrt(ope) * all.zeta,
+	foo.df <- data.frame(p=all.ps,
+		pow=rep(pow,length(all.bnd)),
+		bound=all.bnd)
+	measure.vars <- colnames(foo.df)
+	id.vars <- c("p","pow")
+	measure.vars <- measure.vars[! measure.vars %in% id.vars]
+	require(reshape2)
+	melt.df <- melt(foo.df,id.vars=id.vars,variable.name="Sharpe",
+		measure.vars=measure.vars)
+	return(melt.df)
+}
+
+#	plims = c(2,250)
+#	melt.df <- NULL
+#	for (ppp in pow) {
+#		addon.df <- bound.experiment(ppp,n.obs,zeta.s,n.stok=n.stok,ope=ope,plims=plims)
+#		if (is.null(melt.df))
+#			melt.df <- addon.df
+#		else
+#			melt.df <- rbind(melt.df,addon.df)
+#	}
+#	#as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
+#	melt.df$pow <- as.numeric(melt.df$pow)
+#
+#	require(ggplot2)
+#	ph <- ggplot(data=melt.df,aes(x=p,y=value,group=pow,colour=pow))
+#	ph <- ph + geom_line()
+#	ph <- ph + labs(x="# assets",
+#									y="Signal-Noise ratio (annualized)")
+#	ph <- ph + scale_x_log10(limits = c(1,max(plims)))
+#	ph <- ph + scale_y_log10(limits = c(0.5,4),
+#		breaks=2^seq(from=-1,to=2,by=0.5))
+#	print(ph)
+
+bound.plot <- function(pow,n.obs,zeta.s,plims=c(2,250),...) {
+	melt.df <- NULL
+	for (ppp in pow) {
+		addon.df <- bound.experiment(ppp,n.obs,zeta.s,plims=plims,...)
+		if (is.null(melt.df))
+			melt.df <- addon.df
+		else
+			melt.df <- rbind(melt.df,addon.df)
+	}
+	melt.df$gamma <- factor(melt.df$pow)
+
+	require(ggplot2)
+	ph <- ggplot(data=melt.df,aes(x=p,y=value,group=gamma,colour=gamma))
+	ph <- ph + geom_line()
+	ph <- ph + labs(x="# assets",
+									y="Signal-Noise ratio (annualized)")
+	ph <- ph + guides(colour=guide_legend(title=expression(gamma)))
+	ph <- ph + scale_x_log10(limits = c(1,max(plims)))
+	ph <- ph + scale_y_log10(limits = c(0.5,4),
+		breaks=2^seq(from=-1,to=2,by=0.5))
+	return(ph)
+}
+
+pgammas <- seq(from=0.15,to=0.35,by=0.05)
+
+sgammas <- sort(pgammas)
+sgammas.txt <- paste0(paste0(sgammas[1:(length(sgammas)-1)],collapse=', '),", and ",sgammas[length(sgammas)],sep='')
+sgammas.summary <- paste0("between ",sgammas[1]," and ",sgammas[length(sgammas)])
+
+print(bound.plot(pgammas,n.obs=n.obs,zeta.s=zeta.s,
+	n.stok=n.stok,ope=ope))
+
+```
+
+
+## Empirical diversification in the S&P 100 universe
+
+```{r load_sp100,eval=TRUE,echo=FALSE,results='hide'}
+
+require(Quandl)
+# sooper secret key
+Quandl.auth(Sys.getenv('R_QUANDL_AUTH',unset="GETYOUROWNKEYAND_PUT"))
+require(xts)
+
+# this list is aso of 2014-03-21
+asof <- 'March 21, 2014'
+splist <- c("AAPL", "ABBV", "ABT", "ACN", "AIG", "ALL", "AMGN", "AMZN", "APA", 
+						"APC", "AXP", "BA", "BAC", "BAX", "BIIB", "BK", "BMY", "BRK_B",
+						"C", "CAT", "CL", "CMCSA", "COF", "COP", "COST", "CSCO", "CVS",
+						"CVX", "DD", "DIS", "DOW", "DVN", "EBAY", "EMC", "EMR", "EXC", "F",
+						"FB", "FCX", "FDX", "FOXA", "GD", "GE", "GILD", "GM", "GOOG", "GS",
+						"HAL", "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO",
+						"LLY", "LMT", "LOW", "MA", "MCD", "MDLZ", "MDT", "MET", "MMM",
+						"MO", "MON", "MRK", "MS", "MSFT", "NKE", "NOV", "NSC", "ORCL",
+						"OXY", "PEP", "PFE", "PG", "PM", "QCOM", "RTN", "SBUX", "SLB",
+						"SO", "SPG", "T", "TGT", "TWX", "TXN", "UNH", "UNP", "UPS", "USB",
+						"UTX", "V", "VZ", "WAG", "WFC", "WMT", "XOM")
+
+get.ret <- function(tickr,ntries=5) {
+	the.pry <- NULL
+	attempt <- 1L
+	while (is.null(the.pry) && attempt <= ntries) {
+		attempt <- attempt + 1
+		try(
+			the.pry <- Quandl(paste0('YAHOO/',tickr),
+												collapste="weekly",type="xts",
+												start_date="2009-03-15",end_date="2014-03-31")
+		)
+	}
+
+	if (is.null(the.pry)) {
+		warning(paste0(tickr,' failed to load?'))
+	}
+	tryCatch({
+		the.ac <- to.weekly(the.pry[,"Adjusted Close",drop=FALSE],indexAt='endof')
+		the.ac <- the.ac[,dim(the.ac)[2]]
+		# move to sundays?
+		index(the.ac) <- time(the.ac) + (4 - .indexwday(the.ac))
+		log.ret <- diff(log(the.ac),k=1)
+		colnames(log.ret) <- c(tickr)
+	}, error= function(e) e,
+	finally = print(paste0('done with ',tickr)))
+	return(log.ret)
+}
+
+allrets <- lapply(splist,get.ret)
+all.lr <- do.call(cbind,allrets)
+OEX.lr <- get.ret('INDEX_OEX')
+
+# trim first row
+sub.lr <- all.lr[2:dim(all.lr)[1],]
+ok.col <- colSums(is.na(sub.lr)) == 0
+sub.lr <- sub.lr[,ok.col]
+```
+
+```{r inference_sp100,eval=TRUE,echo=TRUE}
+require(SharpeR)
+# compute MLE and KRS estimators on maximal SR
+# in alphabetical order
+MLEs <- unlist(lapply(1:dim(sub.lr)[2],function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"MLE") }))
+KRSs <- unlist(lapply(1:dim(sub.lr)[2],function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"KRS") }))
+
+# try for random reorderings:
+set.seed(12312L)
+buncho.KRSs <- replicate(1000,unlist(lapply(sample.int(dim(sub.lr)[2]),function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"KRS") })))
+
+```
+
+```{r plot_KRS_sp100,eval=TRUE,echo=TRUE,results='asis'}
+foo.df <- data.frame(df=rep(1:(dim(buncho.KRSs)[1]),dim(buncho.KRSs)[2]),
+	KRS=as.vector(t(buncho.KRSs)))
+foo.df <- foo.df[foo.df$df < 11,]
+
+require(ggplot2)
+ph <- ggplot(data=foo.df,aes(x=factor(df),y=KRS))
+ph <- ph + geom_boxplot()
+ph <- ph + labs(x="# assets",
+								y=expression(zeta["*"]))
+print(ph)
+```
+
+## Learn more
+
+
+```{r run_shiny,eval=FALSE,echo=TRUE}
+library(shiny)
+runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
+# there is also a gist:
+# runGist("75e1066b3db6b0f9e981")
+```
+
 
