@@ -1,52 +1,49 @@
 ---
-title: Portfolio Cramer Rao bounds
-subtitle: sub t
+title: Portfolio Cramér-Rao bounds
+subtitle: (why bad things happen to good quants)
 author: Steven E. Pav
-framework: revealjs
+job: Cerebellum Capital
+framework: io2012
 widgets: [mathjax]
---- layout: slide
-
-### Portfolio Cramer Rao Bounds
-#### (why bad things happen to good quants)
-
-#### Steven E. Pav
-
 ---
+
+```{r setup,cache=FALSE,echo=FALSE,message=FALSE,warning=FALSE}
+options(width=80,digits=2)
+library(SharpeR)
+library(ggplot2)
+library(reshape2)
+library(knitr)
+```
 
 ### Why does this happen? 
 
-<img src="http://www.imgur.com/5oOkkSR.jpg" width="600">
+<img src="http://www.imgur.com/5oOkkSR.jpg" width="500">
 
---- 
-layout: slide
 ---
 
 ### Why overfit happens
 
-##### For bad quants:
-<ul>
-<li>Plain old overfit ('p-value hacking').
-<li>Broken backtests: lookahead bias, survivorship bias, _etc._
-<li>Bad understanding of trade costs. 
-<li>Bad execution.
-</ul>
+For 'bad' quants:
+- Plain old overfit ('p-value hacking').
+- Broken backtests: lookahead bias, survivorship bias, _etc._
+- Bad understanding of trade costs. 
+- Bad execution.
 
-##### For good quants:
-<ul>
-<li>Bad luck.
-<li>A fundamental bound.
-</ul>
+For 'good' quants:
+- Bad luck.
+- A fundamental bound.
 
 ---
 
 ### A fundamental bound?
 
 Consider portfolio estimator as function:
-The input is historical data, the $T\times p$ matrix $X$, say.
-The output is the portfolio, a $p$ vector.
+- The input is historical data, the $T\times p$ matrix $X$, say.
+- The output is the portfolio, a $p$ vector.
 
 Consider the (population) Sharpe ratio of this portfolio,
 its expected value divided by its volatility. 
+
 
 We will bound the expected Sharpe, with expectation over draws
 of $X$.
@@ -61,9 +58,9 @@ $$
 
 Under a wide range of conditions the bound is:
 $$
-E_X\left[Sharpe\right] \le \sqrt{\frac{\mbox{effect size}}{\mbox{\# knobs} + \mbox{effect size}}} \mbox{maximal Sharpe},
+E_X\left[Sharpe\right] \le \sqrt{\frac{\mbox{effect size}}{\mbox{# knobs} + \mbox{effect size}}} \mbox{maximal Sharpe},
 $$
-with $\mbox{effect size} = \mbox{\# years}\, (\mbox{maximal Sharpe})^2.$
+with $\mbox{effect size} = \mbox{# years}\, (\mbox{maximal Sharpe})^2.$
 
 ---
 
@@ -96,6 +93,9 @@ Can it grow fast enough?
 --- 
 
 ### Diversification and universe size
+
+For $\mbox{Sharpe} = p^{\gamma}$, plot bound vs. $p$ for
+different $\gamma$. Fundamental change at $\gamma=1/4$.
 
 ```{r show_grow_bound,echo=FALSE,cache=TRUE}
 
@@ -183,17 +183,106 @@ print(bound.plot(pgammas,n.obs=n.obs,zeta.s=zeta.s,
 	n.stok=n.stok,ope=ope))
 
 ```
+
+---
+### Diversification in the S&P 100
+
+```{r load_sp100,eval=TRUE,echo=FALSE,warning=FALSE,results='hide'}
+
+require(Quandl)
+# sooper secret key
+Quandl.auth(Sys.getenv('R_QUANDL_AUTH',unset="GETYOUROWNKEYAND_PUT"))
+require(xts)
+
+# this list is aso of 2014-03-21
+asof <- 'March 21, 2014'
+splist <- c("AAPL", "ABBV", "ABT", "ACN", "AIG", "ALL", "AMGN", "AMZN", "APA", 
+						"APC", "AXP", "BA", "BAC", "BAX", "BIIB", "BK", "BMY", "BRK_B",
+						"C", "CAT", "CL", "CMCSA", "COF", "COP", "COST", "CSCO", "CVS",
+						"CVX", "DD", "DIS", "DOW", "DVN", "EBAY", "EMC", "EMR", "EXC", "F",
+						"FB", "FCX", "FDX", "FOXA", "GD", "GE", "GILD", "GM", "GOOG", "GS",
+						"HAL", "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO",
+						"LLY", "LMT", "LOW", "MA", "MCD", "MDLZ", "MDT", "MET", "MMM",
+						"MO", "MON", "MRK", "MS", "MSFT", "NKE", "NOV", "NSC", "ORCL",
+						"OXY", "PEP", "PFE", "PG", "PM", "QCOM", "RTN", "SBUX", "SLB",
+						"SO", "SPG", "T", "TGT", "TWX", "TXN", "UNH", "UNP", "UPS", "USB",
+						"UTX", "V", "VZ", "WAG", "WFC", "WMT", "XOM")
+
+get.ret <- function(tickr,ntries=5) {
+	the.pry <- NULL
+	attempt <- 1L
+	while (is.null(the.pry) && attempt <= ntries) {
+		attempt <- attempt + 1
+		try(
+			the.pry <- Quandl(paste0('YAHOO/',tickr),
+												collapste="weekly",type="xts",
+												start_date="2009-03-15",end_date="2014-03-31")
+		)
+	}
+
+	if (is.null(the.pry)) {
+		warning(paste0(tickr,' failed to load?'))
+	}
+	tryCatch({
+		the.ac <- to.weekly(the.pry[,"Adjusted Close",drop=FALSE],indexAt='endof')
+		the.ac <- the.ac[,dim(the.ac)[2]]
+		# move to sundays?
+		index(the.ac) <- time(the.ac) + (4 - .indexwday(the.ac))
+		log.ret <- diff(log(the.ac),k=1)
+		colnames(log.ret) <- c(tickr)
+	}, error= function(e) e,
+	finally = print(paste0('done with ',tickr)))
+	return(log.ret)
+}
+
+allrets <- lapply(splist,get.ret)
+all.lr <- do.call(cbind,allrets)
+OEX.lr <- get.ret('INDEX_OEX')
+
+# trim first row
+sub.lr <- all.lr[2:dim(all.lr)[1],]
+ok.col <- colSums(is.na(sub.lr)) == 0
+sub.lr <- sub.lr[,ok.col]
+```
+
+```{r inference_sp100,eval=TRUE,echo=FALSE,warning=FALSE,results='hide'}
+require(SharpeR)
+# compute MLE and KRS estimators on maximal SR
+# in alphabetical order
+MLEs <- unlist(lapply(1:dim(sub.lr)[2],function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"MLE") }))
+KRSs <- unlist(lapply(1:dim(sub.lr)[2],function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"KRS") }))
+
+# try for random reorderings:
+set.seed(12312L)
+buncho.KRSs <- replicate(1000,unlist(lapply(sample.int(dim(sub.lr)[2]),function(n) {
+								inference(as.sropt(sub.lr[,1:n]),"KRS") })))
+
+```
+
+```{r plot_KRS_sp100,eval=TRUE,echo=FALSE,warning=FALSE,results='asis'}
+foo.df <- data.frame(df=rep(1:(dim(buncho.KRSs)[1]),dim(buncho.KRSs)[2]),
+	KRS=as.vector(t(buncho.KRSs)))
+foo.df <- foo.df[foo.df$df < 11,]
+
+require(ggplot2)
+ph <- ggplot(data=foo.df,aes(x=factor(df),y=KRS))
+ph <- ph + geom_boxplot()
+ph <- ph + labs(x="# assets",
+								y=expression(zeta["*"]))
+print(ph)
+```
+
 ---
 ### Learn More
 
+- Read the [paper](http://arxiv.org/abs/1409.5936)
+- Try the shiny app:
 ```{r demo,eval=FALSE}
 library(shiny)
-runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
+shiny::runGitHub('rfin2015','shabbychef',subdir='StevenPav/app')
 ```
-
---- 
-# testing slides
-$$latex
-\mu / \sigma
-$$
+- Ask me questions.
+- Thank you.
 
