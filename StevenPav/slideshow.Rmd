@@ -262,6 +262,7 @@ buncho.KRSs <- replicate(1000,unlist(lapply(sample.int(dim(sub.lr)[2]),function(
 ```
 
 ```{r plot_KRS_sp100,eval=TRUE,echo=FALSE,warning=FALSE,results='asis'}
+
 foo.df <- data.frame(df=rep(1:(dim(buncho.KRSs)[1]),dim(buncho.KRSs)[2]),
 	KRS=as.vector(t(buncho.KRSs)))
 foo.df <- foo.df[foo.df$df < 11,]

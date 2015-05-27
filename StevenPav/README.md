@@ -1,6 +1,6 @@
 
 
-# Portfolio Cramer Rao bounds
+# Portfolio Cramér Rao bounds
 
 ## Why does this happen?
 
@@ -20,7 +20,7 @@ Quants should not overfit or debias their estimates of Sharpe to control for
 data mining bias, _etc._ Assuming these errors have been corrected, is there
 some kind of fundamental headwind that all quants, even the 'good' ones, face?
 
-## Cramer Rao
+## Cramér Rao
 
 It happens to be the case that there is some fundamental bound. To talk about
 it, consider a portfolio construction method (an 'estimator') as a function
